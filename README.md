@@ -1,4 +1,4 @@
-# Sunshine Tray Icon
+# Sunshine Tray
 ## A tray icon to manage [Sunshine](https://github.com/LizardByte/Sunshine)
 A simple tray icon that shows the current status of sunshine as well as provided the ability to quickly start, stop or configure Sunshine.
 
@@ -8,10 +8,10 @@ So far it only runs on linux and assumes you have a created a service file for s
 
 Use cargo to install the application
 ```
-cargo install sunshine-tray-icon
+cargo install sunshine-tray
 ```
 
-Then simply start it up by running ``sunshine-tray-icon``.
+Then simply start it up by running ``sunshine-tray``.
 
 I would recommend either creating a start menu icon or put it into your system autostart.
 

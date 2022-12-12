@@ -1,19 +1,18 @@
 [package]
-name = "sunshine-tray-icon"
+name = "sunshine-tray"
 version = "1.0.0"
 edition = "2021"
 include = ["res/"]
 license = "MIT"
 description = "A simple tray icon that shows the current status of sunshine as well as provided the ability to quickly start, stop or configure Sunshine"
-homepage = "https://github.com/technologicalMayhem/sunshine-tray-icon"
-repository = "https://github.com/technologicalMayhem/sunshine-tray-icon"
-readme = "README"
+homepage = "https://github.com/technologicalMayhem/sunshine-tray"
+repository = "https://github.com/technologicalMayhem/sunshine-tray"
+readme = "README.md"
 categories = ["games", "os::linux-apis"]
 keywords = ["sunshine", "tray"]
 
 [[bin]]
-name = "sunshine-tray-icon"
-path = "src/main.rs"
+name = "sunshine-tray"
 
 [dependencies]
 ksni = "0.2"

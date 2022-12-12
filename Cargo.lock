@@ -1245,7 +1245,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sunshine-tray-icon"
+name = "sunshine-tray"
 version = "1.0.0"
 dependencies = [
  "const-gen",
