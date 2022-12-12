@@ -9,42 +9,63 @@ use notify_rust::Notification;
 //Imports generated constants for the images
 include!(concat!(env!("OUT_DIR"), "/const_images.rs"));
 
+/// This keeps track of the tray icons current state.
 pub struct TrayIcon {
+    /// The icon that should be displayed right now.
     icon: Icon,
-    state: SunshineState,
+    /// The state of the Sunshine daemon.
+    daemon_state: SunshineState,
+    /// Whether or not to report a shutdown to the user.
     report_shutdown: ReportShutdown,
 }
 
+/// The current state of the Sunshine daemon.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum SunshineState {
-    Off,
-    Ready,
-    Active,
+    /// The daemon is stopped.
+    Stopped,
+    /// The daeomon is running.
+    Running,
+    /// The daemon has a client connected to it.
+    ClientConnected,
 }
 
+/// Whether or not to report a shutdown to the user via a notification.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum ReportShutdown {
+    /// Report a shutdown.
     Report,
+    /// Do not report a shutdown.
     DoNotReport,
 }
 
 impl TrayIcon {
+    /// Creates a new [`TrayIcon`].
     pub fn new() -> Self {
-        let state = poll_status();
+        let daemon_state = poll_status();
         TrayIcon {
-            icon: create_icon(state),
-            state,
+            icon: create_icon(daemon_state),
+            daemon_state,
             report_shutdown: ReportShutdown::DoNotReport,
         }
     }
 
+    /// Update the tray icon to refect the daemons current state.
     fn update_state(&mut self, new_state: SunshineState) {
-        if self.state == new_state {
+        if self.daemon_state == new_state {
             return;
         }
 
+        self.create_notifications(new_state);
+
+        self.daemon_state = new_state;
+        self.icon = create_icon(self.daemon_state);
+    }
+
+    /// Create notifications, if necesarry.
+    fn create_notifications(&mut self, new_state: SunshineState) {
         match new_state {
-            SunshineState::Off => {
+            SunshineState::Stopped => {
                 if self.report_shutdown == ReportShutdown::Report {
                     display_notification(
                         "Sunshine stopped",
@@ -52,32 +73,29 @@ impl TrayIcon {
                     );
                 }
             }
-            SunshineState::Ready => {
+            SunshineState::Running => {
                 if self.report_shutdown != ReportShutdown::Report {
                     self.report_shutdown = ReportShutdown::Report
                 }
 
-                if self.state == SunshineState::Off {
+                if self.daemon_state == SunshineState::Stopped {
                     display_notification(
                         "Client disconnected",
                         "A client disconnected from Sunshine.",
                     );
                 }
 
-                if self.state == SunshineState::Active {
+                if self.daemon_state == SunshineState::ClientConnected {
                     display_notification(
                         "Client disconnected",
                         "A client disconnected from Sunshine.",
                     );
                 }
             }
-            SunshineState::Active => {
+            SunshineState::ClientConnected => {
                 display_notification("Client connected", "A client connected to Sunshine.");
             }
         }
-
-        self.state = new_state;
-        self.icon = create_icon(self.state);
     }
 
     pub fn update(&mut self) {
@@ -85,14 +103,15 @@ impl TrayIcon {
     }
 }
 
+/// Create icon for given state of sunshine.
 fn create_icon(state: SunshineState) -> Icon {
     Icon {
         height: 64,
         width: 64,
         data: Vec::from(match state {
-            SunshineState::Off => IMAGE_OFF,
-            SunshineState::Ready => IMAGE_READY,
-            SunshineState::Active => IMAGE_ACTIVE,
+            SunshineState::Stopped => IMAGE_OFF,
+            SunshineState::Running => IMAGE_READY,
+            SunshineState::ClientConnected => IMAGE_ACTIVE,
         }),
     }
 }
@@ -107,7 +126,7 @@ impl Tray for TrayIcon {
     }
 
     fn activate(&mut self, _x: i32, _y: i32) {
-        if self.state != SunshineState::Off {
+        if self.daemon_state != SunshineState::Stopped {
             open_configuration()
         }
     }
@@ -115,10 +134,11 @@ impl Tray for TrayIcon {
     fn menu(&self) -> Vec<MenuItem<Self>> {
         let mut v: Vec<MenuItem<Self>> = Vec::new();
 
+        //Add button to open config menu
         v.push(
             StandardItem {
                 label: "Configuration".into(),
-                enabled: self.state != SunshineState::Off,
+                enabled: self.daemon_state != SunshineState::Stopped,
                 activate: Box::new(|_| open_configuration()),
                 icon_name: "configure".into(),
                 ..Default::default()
@@ -128,17 +148,19 @@ impl Tray for TrayIcon {
 
         v.push(MenuItem::Separator);
 
+        //Add restart button
         v.push(
             StandardItem {
                 label: "Restart".into(),
-                enabled: self.state != SunshineState::Off,
+                enabled: self.daemon_state != SunshineState::Stopped,
                 activate: Box::new(|_| restart_sunshine()),
                 icon_name: "view-refresh".into(),
                 ..Default::default()
             }
             .into(),
         );
-        if self.state == SunshineState::Off {
+        //Add startup if stopped
+        if self.daemon_state == SunshineState::Stopped {
             v.push(
                 StandardItem {
                     label: "Startup".into(),
@@ -149,7 +171,8 @@ impl Tray for TrayIcon {
                 .into(),
             );
         }
-        if self.state != SunshineState::Off {
+        //Add shutdown if running
+        if self.daemon_state != SunshineState::Stopped {
             v.push(
                 StandardItem {
                     label: "Shutdown".into(),
@@ -163,6 +186,7 @@ impl Tray for TrayIcon {
 
         v.push(MenuItem::Separator);
 
+        //Add button to close the tray icon
         v.push(
             StandardItem {
                 label: "Quit".into(),
@@ -177,32 +201,34 @@ impl Tray for TrayIcon {
     }
 }
 
+/// Opens the configuration interface for Sunshine in the users web browser.
 fn open_configuration() {
-    let mut p = Command::new("xdg-open")
-        .arg("https://localhost:47990/")
-        .spawn()
-        .expect("Failed to spawn xdg-open.");
-    p.wait().expect("Process did not exit succefully.");
+    create_process("xdg-open", vec!["https://localhost:47990/"]);
 }
 
+/// Poll the current state of the Sunshine daemon.
 fn poll_status() -> SunshineState {
     if check_systemctl() == false {
-        return SunshineState::Off;
+        return SunshineState::Stopped;
     }
 
     if check_for_stream_thread() {
-        return SunshineState::Active;
+        return SunshineState::ClientConnected;
     } else {
-        return SunshineState::Ready;
+        return SunshineState::Running;
     }
 }
 
+/// Check if the Sunshine daemon is running using systemctl.
 fn check_systemctl() -> bool {
     let out = create_process("systemctl", vec!["--user", "status", "sunshine"]);
 
     out.status.success()
 }
 
+/// Checks if a client is currently connected to the Sunshine daemon.
+/// 
+/// This is accomplished by checking if sunshine has a thread running with the name 'threaded-ml'.
 fn check_for_stream_thread() -> bool {
     let out = create_process("ps", vec!["-T", "-C", "sunshine"]);
     let out_s = String::from_utf8_lossy(&out.stdout);
@@ -210,22 +236,31 @@ fn check_for_stream_thread() -> bool {
     out_s.contains("threaded-ml")
 }
 
+/// Starts the Sunshine daemon.
 fn start_sunshine() {
     systemctl_action("start");
 }
 
+/// Stops the Sunshine daemon.
 fn stop_sunshine() {
     systemctl_action("stop");
 }
 
+/// Restarts the Sunshine daemon.
 fn restart_sunshine() {
     systemctl_action("restart");
 }
 
+/// Peforms the given action on the Sunshine daemon.
 fn systemctl_action(action: &str) -> Output {
     create_process("systemctl", vec!["--user", action, "sunshine"])
 }
 
+/// Helper method to quickly create a program with the given arguments.
+///
+/// # Panics
+///
+/// Panics if it fails to execute the program.
 fn create_process(file: &str, args: Vec<&str>) -> Output {
     Command::new(file)
         .args(args)
@@ -233,6 +268,11 @@ fn create_process(file: &str, args: Vec<&str>) -> Output {
         .expect(&format!("Failed to execute {}.", file))
 }
 
+/// Displays a notfication on the desktop.
+///
+/// # Panics
+///
+/// Panics if it is unable to create a notification.
 fn display_notification(summary: &str, body: &str) {
     Notification::new()
         .summary(summary)
