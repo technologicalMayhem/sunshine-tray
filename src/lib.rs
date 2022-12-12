@@ -1,5 +1,5 @@
 use std::{
-    process::{Command, Output, self},
+    process::{self, Command, Output},
     vec,
 };
 
@@ -135,70 +135,67 @@ impl Tray for TrayIcon {
         let mut v: Vec<MenuItem<Self>> = Vec::new();
 
         //Add button to open config menu
-        v.push(
-            StandardItem {
-                label: "Configuration".into(),
-                enabled: self.daemon_state != SunshineState::Stopped,
-                activate: Box::new(|_| open_configuration()),
-                icon_name: "configure".into(),
-                ..Default::default()
-            }
-            .into(),
-        );
+        v.push(create_menu_item!(
+            "Configuration",
+            |_| open_configuration(),
+            "configure",
+            self.daemon_state != SunshineState::Stopped
+        ));
 
         v.push(MenuItem::Separator);
 
         //Add restart button
-        v.push(
-            StandardItem {
-                label: "Restart".into(),
-                enabled: self.daemon_state != SunshineState::Stopped,
-                activate: Box::new(|_| restart_sunshine()),
-                icon_name: "view-refresh".into(),
-                ..Default::default()
-            }
-            .into(),
-        );
+        v.push(create_menu_item!(
+            "Restart",
+            |_| restart_sunshine(),
+            "view-refresh",
+            self.daemon_state != SunshineState::Stopped
+        ));
         //Add startup if stopped
         if self.daemon_state == SunshineState::Stopped {
-            v.push(
-                StandardItem {
-                    label: "Startup".into(),
-                    activate: Box::new(|_| start_sunshine()),
-                    icon_name: "media-playback-start".into(),
-                    ..Default::default()
-                }
-                .into(),
-            );
+            v.push(create_menu_item!(
+                "Startup",
+                |_| start_sunshine(),
+                "media-playback-start",
+                true
+            ));
         }
         //Add shutdown if running
         if self.daemon_state != SunshineState::Stopped {
-            v.push(
-                StandardItem {
-                    label: "Shutdown".into(),
-                    activate: Box::new(|_| stop_sunshine()),
-                    icon_name: "kt-stop".into(),
-                    ..Default::default()
-                }
-                .into(),
-            );
+            v.push(create_menu_item!(
+                "Shutdown",
+                |_| stop_sunshine(),
+                "kt-stop",
+                true
+            ));
         }
 
         v.push(MenuItem::Separator);
 
         //Add button to close the tray icon
-        v.push(
-            StandardItem {
-                label: "Quit".into(),
-                activate: Box::new(|_| process::exit(0)),
-                icon_name: "gtk-quit".into(),
-                ..Default::default()
-            }
-            .into(),
-        );
+        v.push(create_menu_item!(
+            "Quit",
+            |_| process::exit(0),
+            "gtk-quit",
+            true
+        ));
 
         v
     }
+}
+
+#[macro_export]
+macro_rules! create_menu_item {
+    ($label:literal, $activate:expr, $icon_name:literal, $enabled:expr) => {
+        StandardItem {
+            label: $label.into(),
+            activate: Box::new($activate),
+            icon_name: $icon_name.into(),
+            enabled: $enabled,
+            ..Default::default()
+        }
+        .into()
+    };
 }
 
 /// Opens the configuration interface for Sunshine in the users web browser.
@@ -227,7 +224,7 @@ fn check_systemctl() -> bool {
 }
 
 /// Checks if a client is currently connected to the Sunshine daemon.
-/// 
+///
 /// This is accomplished by checking if sunshine has a thread running with the name 'threaded-ml'.
 fn check_for_stream_thread() -> bool {
     let out = create_process("ps", vec!["-T", "-C", "sunshine"]);
