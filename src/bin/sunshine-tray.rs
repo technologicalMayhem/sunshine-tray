@@ -1,7 +1,6 @@
 use std::{env, thread, time::Duration};
 
-use tray_icon::TrayIcon;
-mod tray_icon;
+use sunshine_tray::TrayIcon;
 
 fn main() {
     env::set_var("SYSTEMCTL_PATH", "/usr/bin/systemctl");
