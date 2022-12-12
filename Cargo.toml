@@ -2,7 +2,6 @@
 name = "sunshine-tray"
 version = "1.0.0"
 edition = "2021"
-include = ["res/"]
 license = "MIT"
 description = "A simple tray icon that shows the current status of sunshine as well as provided the ability to quickly start, stop or configure Sunshine"
 homepage = "https://github.com/technologicalMayhem/sunshine-tray"
