@@ -1,0 +1,18 @@
+[package]
+name = "sunshine-tray-icon"
+version = "0.1.0"
+edition = "2021"
+include = ["res/"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ksni = "0.2"
+image = "0.24"
+systemctl = "0.1"
+notify-rust = "4"
+rodio = "0.16"
+
+[build-dependencies]
+image = "0.24"
+const-gen = "1.3"
