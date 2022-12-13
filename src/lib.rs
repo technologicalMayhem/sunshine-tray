@@ -168,7 +168,7 @@ impl Tray for TrayIcon {
 
         //Add button to close the tray icon
         v.push(create_menu_item!(
-            "Quit",
+            "Quit Tray Icon",
             |_| process::exit(0),
             "gtk-quit",
             true
