@@ -74,16 +74,7 @@ impl TrayIcon {
                 }
             }
             SunshineState::Running => {
-                if self.report_shutdown != ReportShutdown::Report {
-                    self.report_shutdown = ReportShutdown::Report
-                }
-
-                if self.daemon_state == SunshineState::Stopped {
-                    display_notification(
-                        "Client disconnected",
-                        "A client disconnected from Sunshine.",
-                    );
-                }
+                self.report_shutdown = ReportShutdown::Report;
 
                 if self.daemon_state == SunshineState::ClientConnected {
                     display_notification(
@@ -164,7 +155,10 @@ impl Tray for TrayIcon {
         if self.daemon_state != SunshineState::Stopped {
             v.push(create_menu_item!(
                 "Shutdown",
-                |_| stop_sunshine(),
+                |tray: &mut TrayIcon| {
+                    tray.report_shutdown = ReportShutdown::DoNotReport;
+                    stop_sunshine()
+                },
                 "kt-stop",
                 true
             ));
